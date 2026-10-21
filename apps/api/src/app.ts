@@ -27,7 +27,7 @@ export async function buildApp(ctx: Ctx, opts: { rateLimitMax?: number } = {}): 
   app.decorate('ctx', ctx);
   app.decorateRequest('actor', null); app.decorateRequest('mfaUserId', null); app.decorateRequest('mfaSessionId', null);
 
-  await app.register(helmet, { contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'], fontSrc: ["'self'", 'https://fonts.gstatic.com'], imgSrc: ["'self'", 'data:', 'blob:'], scriptSrc: ["'self'", "'unsafe-inline'"], connectSrc: ["'self'"], objectSrc: ["'none'"], frameAncestors: ["'none'"] } } });
+  await app.register(helmet, { contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'], fontSrc: ["'self'", 'https://fonts.gstatic.com'], imgSrc: ["'self'", 'data:', 'blob:'], scriptSrc: ["'self'"], scriptSrcAttr: ["'unsafe-inline'"], connectSrc: ["'self'"], objectSrc: ["'none'"], frameAncestors: ["'none'"] } } });
   await app.register(cookie);
   await app.register(rateLimit, { global: true, max: opts.rateLimitMax ?? 300, timeWindow: '1 minute' });
   await app.register(multipart, { limits: { fileSize: 5 * 1024 * 1024, files: 1 } });

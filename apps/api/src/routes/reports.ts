@@ -9,7 +9,7 @@ import { forbidden } from '../lib/errors.js';
 import { parse } from '../lib/http.js';
 import { auditActor, needAdmin, needPerm, needStaff } from '../auth/guards.js';
 import { loadLoans, today } from '../services/loans.js';
-import { loanScope } from './loans.js';
+import { decorateStaff, loanScope } from './loans.js';
 import { readCpf } from '../services/clients.js';
 
 const monthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
@@ -45,7 +45,8 @@ export async function reportRoutes(app: FastifyInstance) {
       hoje: day, aReceberCents: abertas.reduce((s, i) => s + i.balanceCents, 0), recebidoCents: insts.reduce((s, i) => s + i.recebidoCents, 0), emAtrasoCents: atrasadas.reduce((s, i) => s + i.balanceCents, 0),
       vencemHoje: abertas.filter((i) => i.status === 'today').length, atrasadas: atrasadas.length, solicitacoesPendentes: pend.n,
       emprestadoCents: a.perms.lucro ? ls.reduce((s, l) => s + l.view.valorCents, 0) : null, recebiHojeCents: Number(meu.t),
-      proximas: abertas.filter((i) => i.dueDate >= day).sort((x, y) => x.dueDate.localeCompare(y.dueDate)).slice(0, 6), emAtraso: atrasadas.sort((x, y) => x.dueDate.localeCompare(y.dueDate)).slice(0, 5),
+      proximas: await decorateStaff(ctx, abertas.filter((i) => i.dueDate >= day).sort((x, y) => x.dueDate.localeCompare(y.dueDate)).slice(0, 6)),
+      emAtraso: await decorateStaff(ctx, atrasadas.sort((x, y) => x.dueDate.localeCompare(y.dueDate)).slice(0, 5)),
     };
   });
 

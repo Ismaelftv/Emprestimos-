@@ -4,7 +4,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { brl, buildSchedule, FREQS, isValidDate, type Freq } from '@caixa/core';
 import type { Actor, Ctx } from '../context.js';
-import { clients, installments, loans, payments, staffProfiles } from '../db/schema.js';
+import { clients, installments, loans, paymentReports, payments, staffProfiles } from '../db/schema.js';
 import { audit } from '../lib/audit.js';
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { parse } from '../lib/http.js';
@@ -35,7 +35,19 @@ export async function paymentLines(ctx: Ctx, loanIds: string[], forClient: boole
 }
 export async function loanWithPayments(ctx: Ctx, view: LoanView, forClient: boolean) {
   const lines = await paymentLines(ctx, [view.id], forClient);
-  return { ...view, installments: view.installments.map((i) => ({ ...i, pagamentos: lines.get(i.id) ?? [] })) };
+  const base = { ...view, installments: view.installments.map((i) => ({ ...i, pagamentos: lines.get(i.id) ?? [] })) };
+  if (forClient) return base;
+  return { ...base, installments: await decorateStaff(ctx, base.installments.map((i) => ({ ...i, clientId: view.clientId }))) };
+}
+
+/** Acrescenta, para a equipe, o aviso de pagamento pendente (comprovante/dinheiro) e o WhatsApp do cliente à lista de parcelas. */
+export async function decorateStaff<T extends { id: string; clientId: string }>(ctx: Ctx, items: T[]) {
+  if (!items.length) return items.map((i) => ({ ...i, aviso: null as null | { id: string; method: string; valorCents: number; note: string; fileId: string | null }, clientWhatsapp: '' }));
+  const reps = await ctx.db.select().from(paymentReports).where(and(inArray(paymentReports.installmentId, items.map((i) => i.id)), eq(paymentReports.status, 'pendente')));
+  const cids = [...new Set(items.map((i) => i.clientId))];
+  const ph = new Map((await ctx.db.select({ id: clients.id, w: clients.whatsapp }).from(clients).where(inArray(clients.id, cids))).map((c) => [c.id, c.w]));
+  const rep = new Map(reps.map((r) => [r.installmentId, r]));
+  return items.map((i) => { const r = rep.get(i.id); return { ...i, aviso: r ? { id: r.id, method: r.method, valorCents: r.valorCents, note: r.note, fileId: r.fileId } : null, clientWhatsapp: ph.get(i.clientId) ?? '' }; });
 }
 
 export async function loanRoutes(app: FastifyInstance) {
@@ -105,7 +117,10 @@ export async function loanRoutes(app: FastifyInstance) {
     items = items.filter((i) => ({ todos: i.status !== 'paid', atraso: i.status === 'late', hoje: i.status === 'today', semana: i.status !== 'paid' && i.dueDate >= day && i.dueDate <= limIso, pagos: i.status === 'paid' })[q.filtro]);
     if (q.q) items = items.filter((i) => i.clientNome.toLowerCase().includes(q.q!.toLowerCase()));
     items.sort((x, y) => (q.filtro === 'pagos' ? y.dueDate.localeCompare(x.dueDate) : x.dueDate.localeCompare(y.dueDate)));
-    return { hoje: day, items: items.slice(0, 1000) };
+    items = items.slice(0, 1000);
+    const lines = await paymentLines(ctx, [...new Set(items.map((i) => i.loanId))], false);
+    const withPays = items.map((i) => ({ ...i, pagamentos: lines.get(i.id) ?? [] }));
+    return { hoje: day, items: await decorateStaff(ctx, withPays) };
   });
 
   // ---- recebimentos ----

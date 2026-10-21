@@ -93,3 +93,53 @@ describe('LGPD', () => {
     expect((await a.get('/audit')).body.items.some((x: any) => x.action === 'lgpd.anonimizou')).toBe(true);
   });
 });
+
+describe('dados de apoio à tela da equipe', () => {
+  it('parcelas trazem pagamentos, aviso pendente e WhatsApp do cliente (só para a equipe)', async () => {
+    const e = await makeEnv('2026-10-20T15:00:00.000Z');
+    try {
+      await addStaff(e, { email: 'admin@caixa.app', role: 'admin' });
+      const adm = await login(e, 'admin@caixa.app');
+      const { clientId } = await addClientUser(e, { nome: 'Dora Lima', email: 'dora@cli.com' });
+      await e.ctx.db.update(clients).set({ whatsapp: '11911112222' }).where(eq(clients.id, clientId));
+      const dora = await login(e, 'dora@cli.com');
+      const a = api(e, adm);
+      const l = await a.post('/loans', { clientId, valorCents: 10000, jurosBps: 2000, nParcelas: 2, freqDays: 7, firstDue: '2026-10-21', pulaDomingo: false });
+      const ag = (await a.get('/installments?filtro=todos')).body;
+      const i1 = ag.items[0];
+      expect(i1).toMatchObject({ clientNome: 'Dora Lima', clientWhatsapp: '11911112222', aviso: null, pagamentos: [] });
+      // cliente avisa dinheiro → aparece como aviso pendente para a equipe
+      expect((await api(e, dora).post(`/me/installments/${i1.id}/report?method=dinheiro&note=sexta`)).status).toBe(201);
+      const ag2 = (await a.get('/installments?filtro=todos')).body.items[0];
+      expect(ag2.aviso).toMatchObject({ method: 'dinheiro', note: 'sexta' });
+      // pagamento aparece com quem recebeu
+      const pay = await a.post(`/installments/${i1.id}/payments`, { valorCents: 3000, method: 'pix' });
+      expect(pay.status).toBe(201);
+      const d = (await a.get('/dashboard')).body;
+      expect(d.emAtraso.concat(d.proximas)[0]).toHaveProperty('clientWhatsapp');
+      const det = (await a.get(`/loans/${l.body.id}`)).body;
+      expect(det.installments[0].pagamentos[0]).toMatchObject({ valorCents: 3000, kind: 'parcela' });
+      // o cliente nunca recebe o WhatsApp/aviso internos nem quem recebeu
+      const mine = (await api(e, dora).get('/me/loans')).body[0].installments[0];
+      expect(mine).not.toHaveProperty('clientWhatsapp');
+      expect(JSON.stringify(mine.pagamentos)).not.toContain('recebidoPor');
+    } finally { await e.close(); }
+  });
+
+  it('recibo por e-mail ao cliente com acesso, uma vez por recibo', async () => {
+    const e = await makeEnv('2026-10-20T15:00:00.000Z');
+    try {
+      await addStaff(e, { email: 'admin@caixa.app', role: 'admin' });
+      const adm = await login(e, 'admin@caixa.app');
+      const { clientId } = await addClientUser(e, { nome: 'Eva Dias', email: 'eva@cli.com' });
+      const a = api(e, adm);
+      await a.post('/loans', { clientId, valorCents: 10000, jurosBps: 2000, nParcelas: 2, freqDays: 7, firstDue: '2026-10-21', pulaDomingo: false });
+      const i1 = (await a.get('/installments?filtro=todos')).body.items[0];
+      await a.post(`/installments/${i1.id}/payments`, { valorCents: 6000, method: 'dinheiro' });
+      await runDueJobs(e.ctx.db, makeHandlers(e.ctx), e.clock.now);
+      const m = e.mailer.sent.filter((x) => x.to === 'eva@cli.com' && /recibo/i.test(x.subject));
+      expect(m).toHaveLength(1);
+      expect(m[0].text).toContain('R$');
+    } finally { await e.close(); }
+  });
+});

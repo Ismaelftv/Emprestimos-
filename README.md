@@ -52,3 +52,10 @@ Consentimento registrado no autocadastro; cliente baixa seus dados e pede exclus
 
 ## Não incluído (opcional / depende de contratação)
 Envio automático de WhatsApp (interface pronta; exige conta Meta Business) e conciliação Pix por PSP (webhook assinado); hoje o Pix é conferido manualmente e o WhatsApp usa link `wa.me`.
+
+## Front (apps/web) e primeiro acesso
+
+- O front é servido pela própria API (mesma origem) quando `apps/web/index.html` existe; não há build.
+- Cliente com portal entra por **convite de uso único** (`#/convite/<token>`), enviado por e-mail/WhatsApp pela equipe — não existem mais senhas provisórias.
+- Senha mínima: 8 caracteres. Avisos push exigem as chaves VAPID configuradas.
+- A CSP permite apenas scripts do próprio domínio (handlers inline `onclick` liberados por `script-src-attr`).
