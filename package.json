@@ -1,0 +1,12 @@
+{
+  "name": "caixa",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "test": "npm run test -w @caixa/core && npm run test -w @caixa/api",
+    "typecheck": "npm run typecheck -w @caixa/core && npm run typecheck -w @caixa/api",
+    "dev": "npm run dev -w @caixa/api",
+    "doctor": "npm run doctor -w @caixa/api"
+  }
+}
