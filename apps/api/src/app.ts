@@ -67,6 +67,6 @@ export async function buildApp(ctx: Ctx, opts: { rateLimitMax?: number } = {}): 
   }, { prefix: '/api/v1' });
 
   const webDir = ctx.config.webDir ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../web');
-  if (fs.existsSync(path.join(webDir, 'index.html'))) await app.register(fastifyStatic, { root: webDir, wildcard: true, setHeaders: (res, p) => { if (p.endsWith('sw.js')) res.setHeader('Cache-Control', 'no-cache'); } });
+  if (fs.existsSync(path.join(webDir, 'index.html'))) await app.register(fastifyStatic, { root: webDir, wildcard: true, setHeaders: (res, p) => { if (p.endsWith('sw.js')) res.header('Cache-Control', 'no-cache'); } });
   return app;
 }
