@@ -16,4 +16,4 @@ export function makePushSender(cfg: Config): PushSender {
     },
   };
 }
-export class MemoryPush implements PushSender { enabled = true; sent: { sub: PushSub; p: PushPayload }[] = []; async send(sub: PushSub, p: PushPayload) { this.sent.push({ sub, p }); return 'ok' as const; } }
+export class MemoryPush implements PushSender { enabled = true; sent: { sub: PushSub; p: PushPayload }[] = []; async send(sub: PushSub, p: PushPayload): Promise<'ok' | 'gone'> { this.sent.push({ sub, p }); return 'ok'; } }
