@@ -16,7 +16,7 @@ import { enqueue } from '../lib/queue.js';
 export const freqSchema = z.number().refine((f): f is Freq => (FREQS as number[]).includes(f), 'Frequência inválida');
 const dateSchema = z.string().refine(isValidDate, 'Data inválida');
 const idP = z.object({ id: z.string().uuid() });
-const loanScope = (a: Actor) => and(eq(loans.orgId, a.orgId), sql`${loans.clientId} in ${visibleClientIds(a)}`)!;
+export const loanScope = (a: Actor) => and(eq(loans.orgId, a.orgId), sql`${loans.clientId} in ${visibleClientIds(a)}`)!;
 
 /** Pagamentos de cada parcela, no formato de tela (sem expor nada além do necessário ao cliente). */
 export async function paymentLines(ctx: Ctx, loanIds: string[], forClient: boolean) {
