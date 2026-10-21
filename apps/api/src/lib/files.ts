@@ -47,3 +47,11 @@ export async function loadFile(db: Db | Tx, storage: Storage, master: Buffer, id
   const enc = await storage.get(f.storageKey);
   return { meta: f, data: openBuffer(master, enc, f.encIv, f.encTag) };
 }
+
+/** Lê o arquivo de uma requisição multipart; devolve 400 (e não 406/413) quando falta ou é grande demais. */
+export async function readUpload(req: import('fastify').FastifyRequest): Promise<Buffer> {
+  if (!req.isMultipart()) throw badRequest('Anexe o arquivo', 'sem_arquivo');
+  const part = await req.file();
+  if (!part) throw badRequest('Anexe o arquivo', 'sem_arquivo');
+  return part.toBuffer().catch(() => { throw badRequest('Arquivo maior que 5 MB', 'arquivo_grande'); });
+}

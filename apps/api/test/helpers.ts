@@ -59,3 +59,17 @@ export async function addClientUser(env: TestEnv, o: { nome: string; email: stri
   return { userId: u.id, clientId: c.id };
 }
 export { eq };
+
+export const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from('JFIF-fake-image-bytes-for-tests'.repeat(10))]);
+export function multipartBody(data: Buffer, filename = 'foto.jpg', mime = 'image/jpeg') {
+  const boundary = '----caixaTest' + Math.random().toString(16).slice(2);
+  const head = Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mime}\r\n\r\n`);
+  const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
+  return { payload: Buffer.concat([head, data, tail]), contentType: `multipart/form-data; boundary=${boundary}` };
+}
+export async function upload(env: TestEnv, s: Sess, url: string, data: Buffer = JPEG, filename = 'foto.jpg') {
+  const m = multipartBody(data, filename);
+  const r = await env.app.inject({ method: 'POST', url: '/api/v1' + url, payload: m.payload, headers: { cookie: s.cookie, 'x-csrf': s.csrf, 'content-type': m.contentType } });
+  let json: any = null; try { json = r.json(); } catch { /* */ }
+  return { status: r.statusCode, body: json };
+}
