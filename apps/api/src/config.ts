@@ -31,6 +31,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     secret, fileKey, cookieSecure: e.COOKIE_SECURE ? e.COOKIE_SECURE === 'true' : prod,
     smtpUrl: e.SMTP_URL, smtpFrom: e.SMTP_FROM, vapid: e.VAPID_PUBLIC_KEY && e.VAPID_PRIVATE_KEY ? { publicKey: e.VAPID_PUBLIC_KEY, privateKey: e.VAPID_PRIVATE_KEY, subject: e.VAPID_SUBJECT } : null,
     trustProxy: e.TRUST_PROXY === 'true', webDir: e.WEB_DIR,
-    bootstrap: e.BOOTSTRAP_ADMIN_EMAIL && e.BOOTSTRAP_ADMIN_PASSWORD ? { email: e.BOOTSTRAP_ADMIN_EMAIL, password: e.BOOTSTRAP_ADMIN_PASSWORD, nome: e.BOOTSTRAP_ADMIN_NAME } : null,
+    bootstrap: e.BOOTSTRAP_ADMIN_EMAIL ? { email: e.BOOTSTRAP_ADMIN_EMAIL, password: e.BOOTSTRAP_ADMIN_PASSWORD ?? null, nome: e.BOOTSTRAP_ADMIN_NAME } : null,
   };
 }

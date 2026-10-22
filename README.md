@@ -28,7 +28,7 @@ Sem `DATABASE_URL` o servidor usa PGlite em `./data` (só para testar). Em produ
    **Guarde a FILE_KEY fora do servidor**: sem ela, documentos e 2FA não podem ser abertos.
 3. `cd deploy && docker compose up -d --build` — o Caddy emite o certificado sozinho.
 4. `docker compose exec api npm run doctor -w @caixa/api` — deve terminar em "Tudo certo".
-5. Entre com o administrador inicial, **troque a senha, ative o 2FA** e remova `BOOTSTRAP_ADMIN_PASSWORD` do `.env`.
+5. Veja a senha inicial do administrador (`admin@gmail.com` por padrão) com `docker compose logs api | grep SENHA` — ela aparece só na primeira subida, se `BOOTSTRAP_ADMIN_PASSWORD` estiver vazio. Entre, **troque a senha e ative o 2FA**.
 6. Agende `deploy/backup.sh` no cron (diário) e copie os backups para fora do servidor.
 
 ## Variáveis de ambiente
