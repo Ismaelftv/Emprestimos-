@@ -4,6 +4,9 @@ import { orgs, settings, staffProfiles, users } from './db/schema.js';
 import { hashPassword } from './lib/crypto.js';
 import { audit } from './lib/audit.js';
 
+/** Senha provisória de 1º acesso (pública no repositório: TROQUE logo após entrar; o `doctor` acusa enquanto ela estiver valendo). */
+export const SENHA_PROVISORIA = 'Caixa@Trocar2026';
+
 export async function ensureOrg(ctx: Pick<Ctx, 'db'>, nome = 'Minha Carteira') {
   const [o] = await ctx.db.select().from(orgs).limit(1);
   if (o) return o.id;

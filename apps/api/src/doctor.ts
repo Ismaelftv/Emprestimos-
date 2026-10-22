@@ -5,6 +5,8 @@ import nodemailer from 'nodemailer';
 import { loadConfig } from './config.js';
 import { bootCtx } from './boot.js';
 import { users } from './db/schema.js';
+import { verifyPassword } from './lib/crypto.js';
+import { SENHA_PROVISORIA } from './bootstrap.js';
 import { verifyAuditChain } from './lib/audit.js';
 
 type R = { nivel: 'ok' | 'aviso' | 'erro'; msg: string };
@@ -36,9 +38,13 @@ try {
 try {
   const { ctx, handle } = await bootCtx(config);
   await ctx.db.execute(sql`select 1`); add('ok', `Banco conectado (${handle.kind}) e migrações aplicadas`);
-  const admins = await ctx.db.select({ id: users.id }).from(users).where(sql`${users.kind} = 'staff'`).limit(1);
+  const admins = await ctx.db.select({ id: users.id, hash: users.passwordHash }).from(users).where(sql`${users.kind} = 'staff'`).limit(1);
   if (!admins.length) add('aviso', 'Nenhum administrador. Defina BOOTSTRAP_ADMIN_EMAIL e BOOTSTRAP_ADMIN_PASSWORD e inicie o servidor.');
-  else add('ok', 'Administrador cadastrado');
+  else {
+    add('ok', 'Administrador cadastrado');
+    const todos = await ctx.db.select({ hash: users.passwordHash }).from(users).where(sql`${users.kind} = 'staff'`);
+    for (const t of todos) if (await verifyPassword(t.hash, SENHA_PROVISORIA)) add('erro', 'Um usuário da equipe ainda usa a SENHA PROVISÓRIA (pública no repositório). Troque-a agora em Ajustes > Segurança.');
+  }
   const orgs = await ctx.db.execute(sql`select id from orgs`).then((r) => (r as unknown as { rows: { id: string }[] }).rows);
   for (const o of orgs) { const v = await verifyAuditChain(ctx.db, o.id); add(v.ok ? 'ok' : 'erro', v.ok ? `Trilha de auditoria íntegra (${v.checked} registros)` : 'TRILHA DE AUDITORIA ADULTERADA no registro ' + v.brokenAtSeq); }
   await handle.close();
